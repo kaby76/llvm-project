@@ -165,6 +165,14 @@ public:
   void addDocument(PathRef File, StringRef Contents,
                    WantDiagnostics WD = WantDiagnostics::Auto);
 
+  /// Add document for \p File, with contents read from the file
+  /// system if it hasn't already been added. Note--the LSP spec says
+  /// that document synchronization calls are not required for
+  /// processing language feature calls. If the file does not exist on
+  /// the file system, then the contents is set to the empty string
+  /// ("").
+  void trackDocument(PathRef);
+
   /// Get the contents of \p File, which should have been added.
   llvm::StringRef getDocument(PathRef File) const;
 

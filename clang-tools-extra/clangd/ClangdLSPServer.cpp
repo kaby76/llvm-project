@@ -797,6 +797,7 @@ void ClangdLSPServer::onDocumentOnTypeFormatting(
     const DocumentOnTypeFormattingParams &Params,
     Callback<std::vector<TextEdit>> Reply) {
   auto File = Params.textDocument.uri.file();
+  Server->trackDocument(File);
   auto Code = DraftMgr.getDraft(File);
   if (!Code)
     return Reply(llvm::make_error<LSPError>(
@@ -810,6 +811,7 @@ void ClangdLSPServer::onDocumentRangeFormatting(
     const DocumentRangeFormattingParams &Params,
     Callback<std::vector<TextEdit>> Reply) {
   auto File = Params.textDocument.uri.file();
+  Server->trackDocument(File);
   auto Code = DraftMgr.getDraft(File);
   if (!Code)
     return Reply(llvm::make_error<LSPError>(
@@ -827,6 +829,7 @@ void ClangdLSPServer::onDocumentFormatting(
     const DocumentFormattingParams &Params,
     Callback<std::vector<TextEdit>> Reply) {
   auto File = Params.textDocument.uri.file();
+  Server->trackDocument(File);
   auto Code = DraftMgr.getDraft(File);
   if (!Code)
     return Reply(llvm::make_error<LSPError>(
@@ -869,6 +872,7 @@ flattenSymbolHierarchy(llvm::ArrayRef<DocumentSymbol> Symbols,
 
 void ClangdLSPServer::onDocumentSymbol(const DocumentSymbolParams &Params,
                                        Callback<llvm::json::Value> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   URIForFile FileURI = Params.textDocument.uri;
   Server->documentSymbols(
       Params.textDocument.uri.file(),
@@ -905,6 +909,7 @@ static llvm::Optional<Command> asCommand(const CodeAction &Action) {
 void ClangdLSPServer::onCodeAction(const CodeActionParams &Params,
                                    Callback<llvm::json::Value> Reply) {
   URIForFile File = Params.textDocument.uri;
+  Server->trackDocument(File);
   auto Code = DraftMgr.getDraft(File.file());
   if (!Code)
     return Reply(llvm::make_error<LSPError>(
@@ -946,6 +951,7 @@ void ClangdLSPServer::onCodeAction(const CodeActionParams &Params,
 
 void ClangdLSPServer::onCompletion(const CompletionParams &Params,
                                    Callback<CompletionList> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   if (!shouldRunCompletion(Params)) {
     // Clients sometimes auto-trigger completions in undesired places (e.g.
     // 'a >^ '), we return empty results in those cases.
@@ -971,6 +977,7 @@ void ClangdLSPServer::onCompletion(const CompletionParams &Params,
 
 void ClangdLSPServer::onSignatureHelp(const TextDocumentPositionParams &Params,
                                       Callback<SignatureHelp> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   Server->signatureHelp(Params.textDocument.uri.file(), Params.position,
                         [Reply = std::move(Reply), this](
                             llvm::Expected<SignatureHelp> Signature) mutable {
@@ -1010,6 +1017,7 @@ static Location *getToggle(const TextDocumentPositionParams &Point,
 
 void ClangdLSPServer::onGoToDefinition(const TextDocumentPositionParams &Params,
                                        Callback<std::vector<Location>> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   Server->locateSymbolAt(
       Params.textDocument.uri.file(), Params.position,
       [Params, Reply = std::move(Reply)](
@@ -1029,6 +1037,7 @@ void ClangdLSPServer::onGoToDefinition(const TextDocumentPositionParams &Params,
 void ClangdLSPServer::onGoToDeclaration(
     const TextDocumentPositionParams &Params,
     Callback<std::vector<Location>> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   Server->locateSymbolAt(
       Params.textDocument.uri.file(), Params.position,
       [Params, Reply = std::move(Reply)](
@@ -1063,12 +1072,14 @@ void ClangdLSPServer::onSwitchSourceHeader(
 void ClangdLSPServer::onDocumentHighlight(
     const TextDocumentPositionParams &Params,
     Callback<std::vector<DocumentHighlight>> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   Server->findDocumentHighlights(Params.textDocument.uri.file(),
                                  Params.position, std::move(Reply));
 }
 
 void ClangdLSPServer::onHover(const TextDocumentPositionParams &Params,
                               Callback<llvm::Optional<Hover>> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   Server->findHover(Params.textDocument.uri.file(), Params.position,
                     [Reply = std::move(Reply), this](
                         llvm::Expected<llvm::Optional<HoverInfo>> H) mutable {
@@ -1151,6 +1162,7 @@ void ClangdLSPServer::onChangeConfiguration(
 
 void ClangdLSPServer::onReference(const ReferenceParams &Params,
                                   Callback<std::vector<Location>> Reply) {
+  Server->trackDocument(Params.textDocument.uri.file());
   Server->findReferences(Params.textDocument.uri.file(), Params.position,
                          CCOpts.Limit,
                          [Reply = std::move(Reply)](
