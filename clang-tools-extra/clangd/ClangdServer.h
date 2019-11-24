@@ -12,6 +12,7 @@
 #include "../clang-tidy/ClangTidyOptions.h"
 #include "Cancellation.h"
 #include "CodeComplete.h"
+#include "DraftStore.h"
 #include "FSProvider.h"
 #include "FormattedString.h"
 #include "Function.h"
@@ -171,7 +172,7 @@ public:
   /// processing language feature calls. If the file does not exist on
   /// the file system, then the contents is set to the empty string
   /// ("").
-  void trackDocument(PathRef);
+  void trackDocument(PathRef, DraftStore& DraftMgr);
 
   /// Get the contents of \p File, which should have been added.
   llvm::StringRef getDocument(PathRef File) const;

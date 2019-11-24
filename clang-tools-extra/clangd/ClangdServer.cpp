@@ -49,6 +49,7 @@
 #include <memory>
 #include <mutex>
 #include <type_traits>
+#include <fstream>
 
 namespace clang {
 namespace clangd {
@@ -176,14 +177,13 @@ void ClangdServer::addDocument(PathRef File, llvm::StringRef Contents,
     BackgroundIdx->boostRelated(File);
 }
 
-void ClangdServer::addDocumentIfMissing(PathRef File) {
-  if (DraftMgr.getDraft(File) == null) {
-    PathRef the_file = Params.textDocument.uri.file();
-    std::ifstream ifs(the_file.data());
+void ClangdServer::trackDocument(PathRef File, DraftStore& DraftMgr) {
+  if (DraftMgr.getDraft(File) == llvm::None) {
+    std::ifstream ifs(File.data());
     std::string contents( (std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-    DraftMgr.addDraft(the_file, contents);
-    addDocument(the_file, contents, WantDiagnostics::Yes);
-  }   
+    DraftMgr.addDraft(File, contents);
+    addDocument(File, contents, WantDiagnostics::Yes);
+  }
 }
 
 void ClangdServer::removeDocument(PathRef File) { WorkScheduler.remove(File); }
