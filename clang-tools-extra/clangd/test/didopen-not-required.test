@@ -1,82 +1,35 @@
-# RUN: clangd --index-file=%S/Inputs/symbols.test.yaml -lit-test < %s | FileCheck %s
-{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"processId":123,"rootPath":"clangd","capabilities":{"workspace":{"symbol":{"symbolKind":{"valueSet": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26]}}}},"trace":"off"}}
+# Test that we can set choose a configuration/build directly in the initialize
+# request.
+
+# RUN: rm -rf %t.dir2 && mkdir -p %t.dir2
+# RUN: echo 'void foo(); int main() { foo(); }' > %t.dir2/main.cpp
+# RUN: echo '[{"directory": "%/t.dir2", "command": "c++ main.cpp", "file": "INPUT_DIR/main.cpp"}]' > %t.dir2/compile_commands.json
+
+# RUN: sed -e "s|INPUT_DIR|%/t.dir2|g" %s > %t.test.1
+
+# On Windows, we need the URI in didOpen to look like "uri":"file:///C:/..."
+# (with the extra slash in the front), so we add it here.
+# RUN: sed -E -e "s|file://|file:///|g" %t.test.1 > %t.test
+
+# RUN: clangd -lit-test < %t.test | FileCheck -strict-whitespace %t.test
+{"jsonrpc":"2.0","id":0,"method":"initialize","params":{}}
 ---
-{"jsonrpc":"2.0","id":1,"method":"workspace/symbol","params":{"query":"vector"}}
+{"jsonrpc":"2.0","id":1,"method":"textDocument/symbolInfo","params":{"textDocument":{"uri":"file://INPUT_DIR/main.cpp"},"position":{"line":0,"character":26}}}
 #      CHECK:  "id": 1,
 # CHECK-NEXT:  "jsonrpc": "2.0",
 # CHECK-NEXT:    "result": [
 # CHECK-NEXT:      {
-# CHECK-NEXT:        "containerName": "std",
-# CHECK-NEXT:        "kind": 5,
-# CHECK-NEXT:        "location": {
-# CHECK-NEXT:          "range": {
-# CHECK-NEXT:            "end": {
-# CHECK-NEXT:              "character": {{.*}},
-# CHECK-NEXT:              "line": {{.*}}
-# CHECK-NEXT:            },
-# CHECK-NEXT:            "start": {
-# CHECK-NEXT:              "character": {{.*}},
-# CHECK-NEXT:              "line": {{.*}}
-# CHECK-NEXT:            }
-# CHECK-NEXT:          },
-# CHECK-NEXT:          "uri": "file://{{.*}}/vector.h"
-# CHECK-NEXT:        },
-# CHECK-NEXT:        "name": "vector"
+# CHECK-NEXT:        "containerName": null,
+# CHECK-NEXT:        "id": "CA2EBE44A1D76D2A",
+# CHECK-NEXT:        "name": "foo",
+# CHECK-NEXT:        "usr": "c:@F@foo#"
 # CHECK-NEXT:      }
 # CHECK-NEXT:    ]
 # CHECK-NEXT:}
----
-{"jsonrpc":"2.0","id":2,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"test:///main.cpp"}}}
-#      CHECK:  "id": 2,
-# CHECK-NEXT:  "jsonrpc": "2.0",
-# CHECK-NEXT:    "result": [
-# CHECK-NEXT:      {
-# CHECK-NEXT:        "containerName": "",
-# CHECK-NEXT:        "kind": 12,
-# CHECK-NEXT:        "location": {
-# CHECK-NEXT:          "range": {
-# CHECK-NEXT:            "end": {
-# CHECK-NEXT:              "character": {{.*}},
-# CHECK-NEXT:              "line": {{.*}}
-# CHECK-NEXT:            },
-# CHECK-NEXT:            "start": {
-# CHECK-NEXT:              "character": {{.*}},
-# CHECK-NEXT:              "line": {{.*}}
-# CHECK-NEXT:            }
-# CHECK-NEXT:          },
-# CHECK-NEXT:          "uri": "file://{{.*}}/main.cpp"
-# CHECK-NEXT:        },
-# CHECK-NEXT:        "name": "foo"
-# CHECK-NEXT:      }
-# CHECK-NEXT:      {
-# CHECK-NEXT:        "containerName": "",
-# CHECK-NEXT:        "kind": 12,
-# CHECK-NEXT:        "location": {
-# CHECK-NEXT:          "range": {
-# CHECK-NEXT:            "end": {
-# CHECK-NEXT:              "character": {{.*}},
-# CHECK-NEXT:              "line": {{.*}}
-# CHECK-NEXT:            },
-# CHECK-NEXT:            "start": {
-# CHECK-NEXT:              "character": {{.*}},
-# CHECK-NEXT:              "line": {{.*}}
-# CHECK-NEXT:            }
-# CHECK-NEXT:          },
-# CHECK-NEXT:          "uri": "file://{{.*}}/main.cpp"
-# CHECK-NEXT:        },
-# CHECK-NEXT:        "name": "main"
-# CHECK-NEXT:      }
-# CHECK-NEXT:    ]
-# CHECK-NEXT:}
----
-{"jsonrpc":"2.0","id":3,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"test:///foo.cpp"}}}
-#      CHECK:  "error": {
-# CHECK-NEXT:    "code": -32602,
-# CHECK-NEXT:    "message": "trying to get AST for non-added document"
-# CHECK-NEXT:  },
-# CHECK-NEXT:  "id": 3,
-# CHECK-NEXT:  "jsonrpc": "2.0"
 ---
 {"jsonrpc":"2.0","id":3,"method":"shutdown"}
 ---
 {"jsonrpc":"2.0","method":"exit"}
+
+# RUN: rm -rf %t.dir2
+# RUN: rm -rf %t.dir2 %t.test %t.test.1
